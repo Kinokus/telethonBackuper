@@ -1,0 +1,89 @@
+{
+    "_": "Message",
+    "id": 10838116,
+    "peer_id": {
+        "_": "PeerChannel",
+        "channel_id": 1433922609
+    },
+    "date": "2025-10-25T15:53:37+00:00",
+    "message": "\u0421\u0443\u0443\u0443\u0443\u0443\u043a\u0430\u0430\u0430\u0430\u0430\ud83e\udd72 \u044f \u0437\u0430\u0457\u0431\u0430\u0432\u0441\u044f \ud83e\udd72",
+    "out": false,
+    "mentioned": false,
+    "media_unread": false,
+    "silent": false,
+    "post": false,
+    "from_scheduled": false,
+    "legacy": false,
+    "edit_hide": true,
+    "pinned": false,
+    "noforwards": false,
+    "invert_media": false,
+    "offline": false,
+    "from_id": {
+        "_": "PeerUser",
+        "user_id": 521258416
+    },
+    "from_boosts_applied": null,
+    "saved_peer_id": null,
+    "fwd_from": null,
+    "via_bot_id": null,
+    "via_business_bot_id": null,
+    "reply_to": null,
+    "media": null,
+    "reply_markup": null,
+    "entities": [],
+    "views": null,
+    "forwards": null,
+    "replies": {
+        "_": "MessageReplies",
+        "replies": 6,
+        "replies_pts": 18510700,
+        "comments": false,
+        "recent_repliers": [],
+        "channel_id": null,
+        "max_id": 10838133,
+        "read_max_id": null
+    },
+    "edit_date": "2025-10-25T15:54:16+00:00",
+    "post_author": null,
+    "grouped_id": null,
+    "reactions": {
+        "_": "MessageReactions",
+        "results": [
+            {
+                "_": "ReactionCount",
+                "reaction": {
+                    "_": "ReactionEmoji",
+                    "emoticon": "\ud83d\ude4f"
+                },
+                "count": 1,
+                "chosen_order": null
+            }
+        ],
+        "min": false,
+        "can_see_list": true,
+        "reactions_as_tags": false,
+        "recent_reactions": [
+            {
+                "_": "MessagePeerReaction",
+                "peer_id": {
+                    "_": "PeerUser",
+                    "user_id": 6346825954
+                },
+                "date": "2025-10-25T15:54:16+00:00",
+                "reaction": {
+                    "_": "ReactionEmoji",
+                    "emoticon": "\ud83d\ude4f"
+                },
+                "big": false,
+                "unread": false,
+                "my": false
+            }
+        ]
+    },
+    "restriction_reason": [],
+    "ttl_period": null,
+    "quick_reply_shortcut_id": null,
+    "effect": null,
+    "factcheck": null
+}
