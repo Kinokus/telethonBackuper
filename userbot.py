@@ -4,6 +4,8 @@ from telethon import TelegramClient, events
 import json
 from datetime import datetime
 import psycopg2
+import csv
+import io
 
 
 # Custom JSON encoder to handle datetime and bytes objects
@@ -37,33 +39,81 @@ client = TelegramClient(
 
 @client.on(events.NewMessage(pattern=r'/chats', outgoing=True))
 async def list_chats_command(event):
-    """Handle /chats command to list all user's chats"""
+    """Handle /chats command to export groups as CSV"""
     try:
-        # React to the command message
-        # await event.message.react('👍')
+        await event.reply("📊 Generating groups CSV...")
         
         # Get all dialogs (chats)
         dialogs = await client.get_dialogs()
-        print(dialogs)
-        # Build the chat list
-        chat_list = []
-        for dialog in dialogs:
-            chat = dialog.entity
-            chat_info = {
-                'id': chat.id,
-                'name': getattr(chat, 'title', None) or getattr(chat, 'first_name', None) or 'Unknown',
-                'type': chat.__class__.__name__,
-                'unread': dialog.unread_count
-            }
-            chat_list.append(f"• {chat_info['name']} (ID: {chat_info['id']}, Type: {chat_info['type']}, Unread: {chat_info['unread']})")
         
-        # Send the list as a reply
-        response = f"📋 **Your Chats ({len(chat_list)} total):**\n\n" + "\n".join(chat_list)
-        await event.reply(response)
+        # Connect to database to get message counts
+        conn = psycopg2.connect(
+            dbname=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER") or "postgres",
+            password=os.getenv("DB_PASSWORD"),
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT")
+        )
+        cur = conn.cursor()
+        
+        # Create CSV in memory
+        output = io.StringIO()
+        csv_writer = csv.writer(output)
+        
+        # Write header
+        csv_writer.writerow(['id', 'username', 'name', 'message_count'])
+        
+        group_count = 0
+        # Filter for groups only (Channel, Chat, Megagroup)
+        for dialog in dialogs:
+            print(group_count, dialog.entity.id)
+            chat = dialog.entity
+            # chat_type = chat.__class__.__name__
+            # Filter for groups/channels (not User, not bot)
+            # if chat_type in ['Channel', 'Chat']:
+            chat_id = chat.id
+            username = getattr(chat, 'username', None) or ''
+            
+            # Get name: title for groups, or firstname + lastname for users
+            if hasattr(chat, 'title') and chat.title:
+                name = chat.title
+            else:
+                first_name = getattr(chat, 'first_name', '') or ''
+                last_name = getattr(chat, 'last_name', '') or ''
+                name = f"{first_name} {last_name}".strip()
+            
+            # Get message count from database
+            cur.execute("""
+                SELECT COUNT(*) FROM telegram.raw_messages 
+                WHERE chat_id = %s
+            """, (chat_id,))
+            result = cur.fetchone()
+            message_count = result[0] if result else 0
+            
+            # Write row to CSV
+            csv_writer.writerow([chat_id, username, name, message_count])
+            group_count += 1
+        
+        cur.close()
+        conn.close()
+        
+        # Get CSV content
+        csv_content = output.getvalue()
+        output.close()
+        
+        # Send CSV as file
+        csv_bytes = csv_content.encode('utf-8')
+        await event.reply(
+            f"✅ Found {group_count} groups",
+            file=csv_bytes,
+            attributes=[{'_': 'DocumentAttributeFilename', 'file_name': 'groups.csv'}]
+        )
         
     except Exception as e:
-        await event.reply(f"❌ Error listing chats: {str(e)}")
+        await event.reply(f"❌ Error generating CSV: {str(e)}")
         print(f"Error in list_chats_command: {e}")
+        import traceback
+        traceback.print_exc()
 
 @client.on(events.NewMessage)
 async def save_raw_message(event):
