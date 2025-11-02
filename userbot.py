@@ -45,7 +45,7 @@ async def list_chats_command(event):
         
         # Get all dialogs (chats)
         dialogs = await client.get_dialogs()
-        
+        await event.reply(f"📊 Found {len(dialogs)} groups")
         # Connect to database to get message counts
         conn = psycopg2.connect(
             dbname=os.getenv("DB_NAME"),
@@ -102,11 +102,11 @@ async def list_chats_command(event):
         output.close()
         
         # Send CSV as file
-        csv_bytes = csv_content.encode('utf-8')
+        csv_bytes = io.BytesIO(csv_content.encode('utf-8'))
+        csv_bytes.name = 'groups.csv'
         await event.reply(
             f"✅ Found {group_count} groups",
-            file=csv_bytes,
-            attributes=[{'_': 'DocumentAttributeFilename', 'file_name': 'groups.csv'}]
+            file=csv_bytes
         )
         
     except Exception as e:
@@ -153,39 +153,58 @@ async def save_raw_message(event):
         cur = conn.cursor()
         
         # Insert or update user if not exists
-        sender_json = json.dumps(sender.to_dict(), cls=DateTimeEncoder)
-        username = getattr(sender, 'username', None)
-        first_name = getattr(sender, 'first_name', None)
-        last_name = getattr(sender, 'last_name', None)
-        title = getattr(sender, 'title', None)
-        is_bot = getattr(sender, 'bot', False)
+        if sender:
+            sender_json = json.dumps(sender.to_dict(), cls=DateTimeEncoder)
+            username = getattr(sender, 'username', None)
+            first_name = getattr(sender, 'first_name', None)
+            last_name = getattr(sender, 'last_name', None)
+            title = getattr(sender, 'title', None)
+            is_bot = getattr(sender, 'bot', False)
+        else:
+            sender_json = None
+            username = None
+            first_name = None
+            last_name = None
+            title = None
+            is_bot = False
         
         # chat and user same structure so we can use the same function to insert both
-        raw_chat_json = json.dumps(chat.to_dict(), cls=DateTimeEncoder)
-        cur.execute("""
-            INSERT INTO telegram.users (user_id, json_data, title, first_name, last_name)
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (user_id) DO NOTHING
-        """, (chat_id, raw_chat_json, chat_title, chat_first_name, chat_last_name))
+        if chat:
+            raw_chat_json = json.dumps(chat.to_dict(), cls=DateTimeEncoder)
+        else:
+            raw_chat_json = None
+        
+        if chat_id is not None:
+            cur.execute("""
+                INSERT INTO telegram.users (user_id, json_data, title, first_name, last_name)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (user_id) DO NOTHING
+            """, (chat_id, raw_chat_json, chat_title, chat_first_name, chat_last_name))
 
-
-        cur.execute("""
-            INSERT INTO telegram.users (user_id, username, first_name, last_name, title, is_bot, json_data)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (user_id) DO NOTHING
-        """, (sender_id, username, first_name, last_name, title, is_bot, sender_json))
+        if sender_id is not None:
+            cur.execute("""
+                INSERT INTO telegram.users (user_id, username, first_name, last_name, title, is_bot, json_data)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (user_id) DO NOTHING
+            """, (sender_id, username, first_name, last_name, title, is_bot, sender_json))
         
         # Now insert the message
-        raw_message_json = json.dumps(event.message.to_dict(), cls=DateTimeEncoder)
-        message_id = event.message.id if event.message else None
-        date = event.message.date if event.message else None
+        if event.message:
+            raw_message_json = json.dumps(event.message.to_dict(), cls=DateTimeEncoder)
+            message_id = event.message.id
+            date = event.message.date
+        else:
+            raw_message_json = None
+            message_id = None
+            date = None
 
         print(f"Chat ID: {chat_id}, Sender ID: {sender_id}, Message ID: {message_id}, Date: {date}")
 
-        cur.execute("""
-            INSERT INTO telegram.raw_messages (chat_id, sender_id, message_id, json_data, received_at)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (chat_id, sender_id, message_id, raw_message_json, date))
+        if message_id is not None:
+            cur.execute("""
+                INSERT INTO telegram.raw_messages (chat_id, sender_id, message_id, json_data, received_at)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (chat_id, sender_id, message_id, raw_message_json, date))
         conn.commit()
         cur.close()
     except Exception as e:
